@@ -37,6 +37,20 @@ app.get('/api/customers/:id/onboarding', (req, res) => {
   res.json(state);
 });
 
+const STEP_STATUSES = ['pending', 'in_progress', 'completed', 'failed'];
+
+app.patch('/api/customers/:id/onboarding/steps/:stepId', (req, res) => {
+  const { status } = req.body || {};
+  if (!STEP_STATUSES.includes(status)) {
+    return res.status(400).json({ error: `status must be one of ${STEP_STATUSES.join(', ')}` });
+  }
+  const state = store.setStepStatus(req.params.id, req.params.stepId, status);
+  if (!state) {
+    return res.status(404).json({ error: 'Customer or step not found' });
+  }
+  res.json(state);
+});
+
 // Get all onboarding states (dashboard view)
 app.get('/api/onboarding', (req, res) => {
   const states = store.getAllOnboardingStates();

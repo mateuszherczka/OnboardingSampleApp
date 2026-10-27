@@ -35,6 +35,23 @@ function App() {
       });
   }, []);
 
+  const toggleStep = (customerId, step) => {
+    const status = step.status === 'completed' ? 'pending' : 'completed';
+    fetch(`/api/customers/${customerId}/onboarding/steps/${step.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(updated => {
+        setOnboardingData(items => items.map(item => (item.customerId === customerId ? { ...item, ...updated } : item)));
+      })
+      .catch(err => alert(`Could not update step: ${err.message}`));
+  };
+
   return (
     <div className="app">
       <header>
@@ -56,7 +73,7 @@ function App() {
 
       <main className="content">
         {activeTab === 'dashboard' && (
-          <DashboardTab data={onboardingData} loading={loading} error={error} />
+          <DashboardTab data={onboardingData} loading={loading} error={error} onToggleStep={toggleStep} />
         )}
         {activeTab === 'customer-info' && (
           <PlaceholderTab title="Customer Info" description="Collect and validate customer information" />
@@ -75,7 +92,7 @@ function App() {
   );
 }
 
-function DashboardTab({ data, loading, error }) {
+function DashboardTab({ data, loading, error, onToggleStep }) {
   if (loading) {
     return <div className="placeholder"><p>Loading...</p></div>;
   }
@@ -110,7 +127,7 @@ function DashboardTab({ data, loading, error }) {
 
           <div className="progress-section">
             <ProgressBar percent={item.progressPercent} />
-            <Checklist steps={item.steps} />
+            <Checklist steps={item.steps} onToggle={step => onToggleStep(item.customerId, step)} />
           </div>
         </div>
       ))}
@@ -131,11 +148,21 @@ function ProgressBar({ percent }) {
   );
 }
 
-function Checklist({ steps }) {
+function Checklist({ steps, onToggle }) {
   return (
     <ul className="checklist">
       {steps.map(step => (
-        <li key={step.id}>
+        <li
+          key={step.id}
+          role="checkbox"
+          aria-checked={step.status === 'completed'}
+          aria-label={step.name}
+          tabIndex={0}
+          style={{ cursor: 'pointer' }}
+          title={step.status === 'completed' ? 'Click to mark as pending' : 'Click to mark as done'}
+          onClick={() => onToggle(step)}
+          onKeyDown={e => (e.key === ' ' || e.key === 'Enter') && (e.preventDefault(), onToggle(step))}
+        >
           <span className={`step-status ${step.status}`}>
             {step.status === 'completed' ? '✓' : step.order}
           </span>

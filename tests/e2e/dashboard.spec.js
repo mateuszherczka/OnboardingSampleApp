@@ -21,12 +21,30 @@ test.describe('Onboarding Dashboard', () => {
     await expect(page.getByRole('button', { name: 'Import' })).toBeVisible();
   });
 
-  test('should display example customer in onboarding queue', async ({ page }) => {
+  test('should display all customers in onboarding queue', async ({ page }) => {
     await page.goto('/');
 
-    // Wait for data to load and verify example customer is shown
-    await expect(page.locator('.customer-card')).toBeVisible();
-    await expect(page.locator('.customer-card h3')).toContainText('Acme Corporation');
+    await expect(page.locator('.customer-card h3')).toHaveText([
+      'Acme Corporation', 'ABC Accounting', 'XYZ Financial Services', 'Premier Bookkeeping'
+    ]);
+  });
+
+  test('marking a step done updates progress, and undoing it reverts', async ({ page }) => {
+    await page.goto('/');
+    const card = page.locator('.customer-card', { hasText: 'Premier Bookkeeping' });
+    const step = card.getByRole('checkbox', { name: 'Customer Info' });
+
+    await expect(step).toHaveAttribute('aria-checked', 'false');
+    await step.click();
+    await expect(step).toHaveAttribute('aria-checked', 'true');
+    await expect(card.locator('.progress-bar')).toHaveText('25%');
+
+    await page.reload();
+    await expect(card.locator('.progress-bar')).toHaveText('25%');
+
+    await step.click();
+    await expect(step).toHaveAttribute('aria-checked', 'false');
+    await expect(card.locator('.progress-bar')).toHaveText('');
   });
 
   test('should switch between tabs', async ({ page }) => {

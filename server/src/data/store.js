@@ -3,7 +3,13 @@
  * Simple storage for the training exercise - no database needed
  */
 
-const { createCustomer, createTenant, createDefaultOnboardingSteps } = require('../models');
+const { createCustomer, createTenant, createDefaultOnboardingSteps, calculateProgress } = require('../models');
+
+const SAMPLE_CUSTOMERS = [
+  { id: 'cust_002', name: 'ABC Accounting', industry: 'Accounting', region: 'North America', contactEmail: 'onboarding@abc.example.com' },
+  { id: 'cust_003', name: 'XYZ Financial Services', industry: 'Financial Services', region: 'North America', contactEmail: 'onboarding@xyz.example.com' },
+  { id: 'cust_004', name: 'Premier Bookkeeping', industry: 'Bookkeeping', region: 'United Kingdom', contactEmail: 'onboarding@premier.example.com' }
+];
 
 // In-memory storage
 const store = {
@@ -43,6 +49,13 @@ function seedData() {
   store.customers.push(exampleCustomer);
   store.tenants.push(exampleTenant);
   store.onboardingStates.push(exampleOnboardingState);
+
+  SAMPLE_CUSTOMERS.forEach((data, i) => {
+    const createdAt = '2025-02-01T10:00:00Z';
+    store.customers.push(createCustomer({ ...data, createdAt }));
+    store.tenants.push(createTenant({ id: `tenant_00${i + 2}`, customerId: data.id, status: 'pending', plan: 'professional', createdAt }));
+    store.onboardingStates.push({ customerId: data.id, steps: createDefaultOnboardingSteps(), progressPercent: 0 });
+  });
 }
 
 // Initialize with seed data
@@ -97,7 +110,15 @@ function updateOnboardingState(customerId, updates) {
   return null;
 }
 
+function setStepStatus(customerId, stepId, status) {
+  const state = getOnboardingState(customerId);
+  if (!state || !state.steps.some(s => s.id === stepId)) return null;
+  const steps = state.steps.map(s => (s.id === stepId ? { ...s, status } : s));
+  return updateOnboardingState(customerId, { steps, progressPercent: calculateProgress(steps) });
+}
+
 module.exports = {
+  setStepStatus,
   getCustomers,
   getCustomerById,
   addCustomer,
