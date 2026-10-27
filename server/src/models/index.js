@@ -73,7 +73,7 @@ function createTenant(data) {
  */
 function createDefaultOnboardingSteps() {
   return [
-    { id: 'step_1', name: 'Customer Info', status: 'pending', order: 1 },
+    { id: 'step_1', name: 'Customer Info', status: 'pending', order: 1, automatic: true },
     { id: 'step_2', name: 'Data Mapping', status: 'pending', order: 2 },
     { id: 'step_3', name: 'Tenant Setup', status: 'pending', order: 3 },
     { id: 'step_4', name: 'Import', status: 'pending', order: 4 }
@@ -91,7 +91,25 @@ function calculateProgress(steps) {
   return Math.round((completed / steps.length) * 100);
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateCustomerInput(input = {}) {
+  const value = {
+    name: String(input.name || '').trim().replace(/\s+/g, ' '),
+    industry: String(input.industry || '').trim(),
+    region: String(input.region || '').trim(),
+    contactEmail: String(input.contactEmail || '').trim().toLowerCase()
+  };
+  const errors = {};
+  if (!value.name) errors.name = 'Company name is required';
+  if (!value.region) errors.region = 'Location is required';
+  if (!value.industry) errors.industry = 'Type is required';
+  if (value.contactEmail && !EMAIL_RE.test(value.contactEmail)) errors.contactEmail = 'Contact email is not a valid email address';
+  return { value, errors };
+}
+
 module.exports = {
+  validateCustomerInput,
   createCustomer,
   createTenant,
   createDefaultOnboardingSteps,

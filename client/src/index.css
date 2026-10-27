@@ -169,3 +169,44 @@ header p {
   color: #6b7280;
   font-size: 0.9rem;
 }
+
+.mapping-controls {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.mapping-controls select {
+  display: block;
+  margin-top: 4px;
+  padding: 6px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.csv-preview,
+.field-mapping {
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.csv-preview th,
+.csv-preview td,
+.field-mapping th,
+.field-mapping td {
+  border: 1px solid #e5e7eb;
+  padding: 6px 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.csv-preview th,
+.field-mapping th {
+  background: #f9fafb;
+}
+
+.sample-value {
+  color: #6b7280;
+}

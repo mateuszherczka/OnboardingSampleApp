@@ -3,7 +3,13 @@
  * Simple storage for the training exercise - no database needed
  */
 
-const { createCustomer, createTenant, createDefaultOnboardingSteps, calculateProgress } = require('../models');
+const { createCustomer, createTenant, createDefaultOnboardingSteps, calculateProgress, validateCustomerInput } = require('../models');
+
+function initialOnboardingState(customer) {
+  const infoComplete = Object.keys(validateCustomerInput(customer).errors).length === 0;
+  const steps = createDefaultOnboardingSteps().map(s => (s.id === 'step_1' && infoComplete ? { ...s, status: 'completed' } : s));
+  return { customerId: customer.id, steps, progressPercent: calculateProgress(steps) };
+}
 
 const SAMPLE_CUSTOMERS = [
   { id: 'cust_002', name: 'ABC Accounting', industry: 'Accounting', region: 'North America', contactEmail: 'onboarding@abc.example.com' },
@@ -15,7 +21,8 @@ const SAMPLE_CUSTOMERS = [
 const store = {
   customers: [],
   tenants: [],
-  onboardingStates: []
+  onboardingStates: [],
+  mappings: []
 };
 
 // Seed with example data
@@ -39,22 +46,16 @@ function seedData() {
     createdAt: '2025-01-15T10:00:00Z'
   });
 
-  // Example onboarding state - just started, nothing completed
-  const exampleOnboardingState = {
-    customerId: 'cust_001',
-    steps: createDefaultOnboardingSteps(),
-    progressPercent: 0
-  };
-
   store.customers.push(exampleCustomer);
   store.tenants.push(exampleTenant);
-  store.onboardingStates.push(exampleOnboardingState);
+  store.onboardingStates.push(initialOnboardingState(exampleCustomer));
 
   SAMPLE_CUSTOMERS.forEach((data, i) => {
     const createdAt = '2025-02-01T10:00:00Z';
-    store.customers.push(createCustomer({ ...data, createdAt }));
+    const customer = createCustomer({ ...data, createdAt });
+    store.customers.push(customer);
     store.tenants.push(createTenant({ id: `tenant_00${i + 2}`, customerId: data.id, status: 'pending', plan: 'professional', createdAt }));
-    store.onboardingStates.push({ customerId: data.id, steps: createDefaultOnboardingSteps(), progressPercent: 0 });
+    store.onboardingStates.push(initialOnboardingState(customer));
   });
 }
 
@@ -110,6 +111,13 @@ function updateOnboardingState(customerId, updates) {
   return null;
 }
 
+function onboardCustomer(data) {
+  const customer = addCustomer(createCustomer(data));
+  addTenant(createTenant({ id: `tenant_${customer.id}`, customerId: customer.id, plan: 'professional' }));
+  addOnboardingState(initialOnboardingState(customer));
+  return customer;
+}
+
 function setStepStatus(customerId, stepId, status) {
   const state = getOnboardingState(customerId);
   if (!state || !state.steps.some(s => s.id === stepId)) return null;
@@ -117,7 +125,21 @@ function setStepStatus(customerId, stepId, status) {
   return updateOnboardingState(customerId, { steps, progressPercent: calculateProgress(steps) });
 }
 
+function getMapping(customerId) {
+  return store.mappings.find(m => m.customerId === customerId);
+}
+
+function saveMapping(customerId, mapping) {
+  const saved = { ...mapping, customerId, savedAt: new Date().toISOString() };
+  store.mappings = [...store.mappings.filter(m => m.customerId !== customerId), saved];
+  const onboarding = setStepStatus(customerId, 'step_2', 'completed');
+  return { mapping: saved, onboarding };
+}
+
 module.exports = {
+  getMapping,
+  saveMapping,
+  onboardCustomer,
   setStepStatus,
   getCustomers,
   getCustomerById,
