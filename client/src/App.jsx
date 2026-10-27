@@ -262,10 +262,6 @@ const SAMPLE_FILES = ['clients', 'contacts', 'chart_of_accounts', 'transactions'
 
 const CLIENT_TARGET_FIELDS = ['id', 'name', 'entityType', 'status', 'startDate', 'taxId', 'revenue', 'industry', 'paymentTerms'];
 
-function autoMatch(columns) {
-  return Object.fromEntries(CLIENT_TARGET_FIELDS.map(field => [field, columns.includes(field) ? field : '']));
-}
-
 function DataMapping({ onSaved }) {
   const [sourceKey, setSourceKey] = useState(SAMPLE_SOURCES[0].key);
   const [file, setFile] = useState('clients');
@@ -273,6 +269,7 @@ function DataMapping({ onSaved }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [fields, setFields] = useState({});
+  const [autoCount, setAutoCount] = useState(null);
   const [saveMessage, setSaveMessage] = useState(null);
 
   const source = SAMPLE_SOURCES.find(s => s.key === sourceKey);
@@ -288,11 +285,22 @@ function DataMapping({ onSaved }) {
         if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
         return body;
       })
-      .then(data => {
+      .then(async data => {
         if (cancelled) return;
+        setFields({});
+        setAutoCount(null);
         setPreview(data);
-        setFields(autoMatch(data.columns));
         setLoading(false);
+        if (file !== 'clients') return;
+        const res = await fetch('/api/mapping/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entity: 'clients', columns: data.columns })
+        });
+        if (!res.ok || cancelled) return;
+        const { fields: suggested } = await res.json();
+        setFields(suggested);
+        setAutoCount(Object.values(suggested).filter(Boolean).length);
       })
       .catch(err => {
         if (cancelled) return;
@@ -368,6 +376,11 @@ function DataMapping({ onSaved }) {
       {preview && !loading && file === 'clients' && (
         <div style={{ marginTop: '24px' }}>
           <h3>Field mapping</h3>
+          {autoCount !== null && (
+            <p className="auto-map-note">
+              Auto-mapped {autoCount} of {CLIENT_TARGET_FIELDS.length} fields — review, then save
+            </p>
+          )}
           <table className="field-mapping">
             <thead>
               <tr><th>Platform field</th><th>Source column</th><th>Sample value</th></tr>

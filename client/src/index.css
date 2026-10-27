@@ -210,3 +210,8 @@ header p {
 .sample-value {
   color: #6b7280;
 }
+
+.auto-map-note {
+  color: #16a34a;
+  margin: 4px 0 12px;
+}

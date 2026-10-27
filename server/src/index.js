@@ -3,6 +3,7 @@ const cors = require('cors');
 const store = require('./data/store');
 const { validateCustomerInput } = require('./models');
 const { readSampleFile } = require('./lib/sampleFiles');
+const { suggestMapping } = require('./lib/autoMap');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -59,6 +60,16 @@ app.get('/api/sample-files/:customer/:file', (req, res) => {
     return res.status(404).json({ error: 'Sample file not found' });
   }
   res.json(data);
+});
+
+app.post('/api/mapping/suggest', (req, res) => {
+  const { entity, columns } = req.body || {};
+  const valid = Array.isArray(columns) && columns.every(c => typeof c === 'string');
+  const fields = valid ? suggestMapping(entity, columns) : null;
+  if (!fields) {
+    return res.status(400).json({ error: 'Body must be { entity: "clients", columns: string[] }' });
+  }
+  res.json({ fields });
 });
 
 app.get('/api/customers/:customerId/mapping', (req, res) => {
